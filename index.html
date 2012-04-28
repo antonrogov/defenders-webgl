@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!-- saved from url=(0034)http://media.tojicode.com/md5Mesh/ -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+		<title>MD5 Demo</title>
+		
+		<!-- Common Utilities -->
+		<script type="text/javascript" src="javascripts/jquery-1.7.2.min.js"></script>
+		<script type="text/javascript" src="javascripts/glUtil.js"></script>
+		<script type="text/javascript" src="javascripts/gl-matrix.js"></script>
+		<script type="text/javascript" src="javascripts/MD5Anim.js"></script>
+		<script type="text/javascript" src="javascripts/MD5Mesh.js"></script>
+		<script type="text/javascript" src="javascripts/MD5Model.js"></script>
+		<script type="text/javascript" src="javascripts/main.js"></script>
+		
+		<!-- Shaders -->
+		<script id="normal-vs" type="x-shader/x-vertex">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+			
+			attribute vec3 position;
+			attribute vec2 texCoord;
+			attribute vec3 normal;
+			attribute vec3 tangent;
+			
+			uniform vec3 lightPos;
+			
+			uniform mat4 modelViewMat;
+			uniform mat4 projectionMat;
+			uniform mat3 modelViewInvMat;
+			
+			varying vec2 vTexCoord;
+			varying vec3 tangentLightDir;
+			varying vec3 tangentEyeDir;
+			
+			void main(void) {
+				vec4 vPosition = modelViewMat * vec4(position, 1.0);
+				gl_Position = projectionMat * vPosition;
+				vTexCoord = texCoord;
+				
+				vec3 n = normalize(normal * modelViewInvMat);
+				vec3 t = normalize(tangent * modelViewInvMat);
+				vec3 b = cross (n, t);
+				
+				vec3 lightDir = lightPos - vPosition.xyz;
+				tangentLightDir.x = dot(lightDir, t);
+				tangentLightDir.y = dot(lightDir, b);
+				tangentLightDir.z = dot(lightDir, n);
+				
+				vec3 eyeDir = normalize(-vPosition.xyz);
+				tangentEyeDir.x = dot(eyeDir, t);
+				tangentEyeDir.y = dot(eyeDir, b);
+				tangentEyeDir.z = dot(eyeDir, n);
+			}
+		</script>
+		
+		<script id="normal-fs" type="x-shader/x-fragment">
+			#ifdef GL_ES
+			precision highp float;
+			#endif
+			
+			varying vec2 vTexCoord;
+			varying vec3 tangentLightDir;
+			varying vec3 tangentEyeDir;
+			
+			uniform sampler2D diffuse;
+			uniform sampler2D specular;
+			uniform sampler2D normalMap;
+			
+			uniform vec3 ambientLight;  
+			uniform vec3 lightColor;
+			uniform vec3 specularColor;
+			uniform float shininess;
+			
+			void main(void) {
+				vec3 lightDir = normalize(tangentLightDir);
+				vec3 normal = normalize(2.0 * (texture2D(normalMap, vTexCoord.st).rgb - 0.5));
+				vec4 diffuseColor = texture2D(diffuse, vTexCoord.st);
+				
+				float specularLevel = texture2D(specular, vTexCoord.st).r;
+				
+				vec3 eyeDir = normalize(tangentEyeDir);
+				vec3 reflectDir = reflect(-lightDir, normal);
+				float specularFactor = pow(clamp(dot(reflectDir, eyeDir), 0.0, 1.0), shininess) * specularLevel * 2.0;
+				
+				float lightFactor = max(dot(lightDir, normal), 0.0);
+				vec3 lightValue = ambientLight + (lightColor * lightFactor) + (specularColor * specularFactor);
+				
+				gl_FragColor = vec4(diffuseColor.rgb * lightValue, diffuseColor.a);
+			}
+		</script>
+		
+		<style type="text/css">
+			body {
+				font: 0.8em Verdana,sans-serif;
+			}
+			
+			#fps-counter {
+				position: absolute;
+				top: 5px;
+				left: 5px;
+				z-index: 2;
+				color: white;
+			}
+			
+			#controls {
+				position: absolute;
+				bottom: 5px;
+				left: 5px;
+				z-index: 2;
+				color: white;
+			}
+			
+			canvas {
+				position: absolute;
+				cursor: move;
+				top: 0;
+				left: 0;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="viewport-frame">
+			<canvas id="viewport" width="1019" height="630">
+				Sorry, but your browser does not support WebGL or does not have it enabled.
+				To get a WebGL-enabled browser, please see:<br>
+				<a href="http://www.khronos.org/webgl/wiki/Getting_a_WebGL_Implementation" target="_blank">
+					Getting a WebGL Implementation
+				</a>
+			</canvas>
+			<div id="fps-counter">
+				FPS: <span id="fps">9</span>
+			</div>
+		</div>
+		<div id="webgl-error" style="display: none; text-align: center;">
+			Sorry, but your browser does not support WebGL or does not have it enabled.
+			To get a WebGL-enabled browser, please see:<br>
+			<a href="http://www.khronos.org/webgl/wiki/Getting_a_WebGL_Implementation" target="_blank">
+				Getting a WebGL Implementation
+			</a>
+		</div>
+	
+
+</body></html>
